@@ -4,6 +4,8 @@ const fetchBiografy = require("./fetchBiografy");
 
 const bot = new TelegramApi(process.env.TOKEN, {polling: true});
 
+const numberQuestionAndChatId = {};
+
 const questions = [
     "Как Вас зовут?",
     "Укажите дату рождения в любом формате",
@@ -22,33 +24,33 @@ const questions = [
     "Каким родом деятельности Вы занимаетесь, а также какие профессиональные навыки у Вас есть?",
     "Есть ли у Вас планы на будущее. Если есть - напишите, если не секрет, пожалуйста "
 ]
-let currentQuestion = 0;
-const questionsAndAnswers = [];
-questionsAndAnswers.length = questions.length;
 
 bot.on("message", async (msg) => {
     const chatId = msg.chat.id;
     const answer = msg.text;
 
     if(answer === "/start"){
-        currentQuestion = 0;
+        numberQuestionAndChatId[chatId] = {
+            currentQuestion: 0,
+            questionsAndAnswers: []
+        };
         await bot.sendMessage(chatId, "Добро пожаловать в бота заполнения страницы памяти!")
-        await bot.sendMessage(chatId, questions[currentQuestion]);
-        currentQuestion++;
+        await bot.sendMessage(chatId, questions[numberQuestionAndChatId[chatId].currentQuestion]);
+        numberQuestionAndChatId[chatId].currentQuestion += 1;
         return;
     }
-
-    questionsAndAnswers[currentQuestion - 1] = {
-        question: questions[currentQuestion - 1],
+    console.log(numberQuestionAndChatId);//вывод в терминал ид чатов и их ответы на вопросы
+    numberQuestionAndChatId[chatId].questionsAndAnswers.push({
+        question: questions[numberQuestionAndChatId[chatId].currentQuestion - 1],
         answer
-    };
+    })
 
-    if(currentQuestion < questions.length){
-        bot.sendMessage(chatId, questions[currentQuestion]);
-        currentQuestion++;
+    if(numberQuestionAndChatId[chatId].currentQuestion < questions.length){
+        bot.sendMessage(chatId, questions[numberQuestionAndChatId[chatId].currentQuestion]);
+        numberQuestionAndChatId[chatId].currentQuestion += 1;
     }
     else{
-        const biografy = await fetchBiografy(questionsAndAnswers);
+        let biografy = await fetchBiografy(numberQuestionAndChatId[chatId].questionsAndAnswers);
 
         bot.sendMessage(chatId, "Ваша страница памяти:\n" + biografy);
     }
