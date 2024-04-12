@@ -32,14 +32,20 @@ bot.on("message", async (msg) => {
     if(answer === "/start"){
         numberQuestionAndChatId[chatId] = {
             currentQuestion: 0,
-            questionsAndAnswers: []
+            questionsAndAnswers: [],
+            query: false // показывает начался запрос к нейросети или нет
         };
         await bot.sendMessage(chatId, "Добро пожаловать в бота заполнения страницы памяти!")
         await bot.sendMessage(chatId, questions[numberQuestionAndChatId[chatId].currentQuestion]);
         numberQuestionAndChatId[chatId].currentQuestion += 1;
         return;
     }
+    else if(!numberQuestionAndChatId[chatId]){//если вдруг пользователь написал что-то кроме /start до начала опроса
+        return bot.sendMessage(chatId, "Введите команду /start для начала заполнения страницы памяти")
+    }
+    
     console.log(numberQuestionAndChatId);//вывод в терминал ид чатов и их ответы на вопросы
+    
     numberQuestionAndChatId[chatId].questionsAndAnswers.push({
         question: questions[numberQuestionAndChatId[chatId].currentQuestion - 1],
         answer
@@ -49,9 +55,13 @@ bot.on("message", async (msg) => {
         bot.sendMessage(chatId, questions[numberQuestionAndChatId[chatId].currentQuestion]);
         numberQuestionAndChatId[chatId].currentQuestion += 1;
     }
-    else{
+    else if(!numberQuestionAndChatId[chatId].query){ // если запроса к нейросети ещё не было, то сделать запрос
+        const {message_id} = await bot.sendMessage(chatId, "Пожалуйста, дождитесь генерации Вашей страницы памяти");
+        numberQuestionAndChatId[chatId].query = true; //запрос отправился, больше в этот блок кода не попасть пока не выполнится запрос
         let biografy = await fetchBiografy(numberQuestionAndChatId[chatId].questionsAndAnswers);
+        bot.deleteMessage(chatId, message_id);
 
-        bot.sendMessage(chatId, "Ваша страница памяти:\n" + biografy);
+        await bot.sendMessage(chatId, "Ваша страница памяти:\n" + biografy);
+        delete numberQuestionAndChatId[chatId];
     }
 })
